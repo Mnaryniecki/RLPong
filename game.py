@@ -32,6 +32,9 @@ right_paddle = pygame.Rect(
     100                  # height
 )
 
+left_paddle_dir = 0
+right_paddle_dir = 0
+
 # Constant parameters
 cube_size = 20
 speed =8
@@ -45,12 +48,12 @@ def reset_cube():
     go_right = random.choice([True, False])
     if go_right:
         # from -pi/4 to pi/4 (towards the right)
-        angle = random.uniform(-math.pi / 4, math.pi / 4)
+        r_angle = random.uniform(-math.pi / 4, math.pi / 4)
     else:
         # from 3pi/4 to 5pi/4 (towards the left)
-        angle = random.uniform(3 * math.pi / 4, 5 * math.pi / 4)
-    vx = math.cos(angle) * speed
-    vy = math.sin(angle) * speed
+        r_angle = random.uniform(3 * math.pi / 4, 5 * math.pi / 4)
+    vx = math.cos(r_angle) * speed
+    vy = math.sin(r_angle) * speed
 
     return x, y, vx, vy
 
@@ -120,8 +123,12 @@ while running:
     if abs(cube.centery-left_paddle.centery) > 5:
         if cube.centery-left_paddle.centery > 0:
             left_paddle.y += paddle_speed
+            left_paddle_dir = 1
         else:
             left_paddle.y -= paddle_speed
+            left_paddle_dir = -1
+    else:
+        left_paddle_dir = 0
 
     if left_paddle.top < 0:
         left_paddle.top=0
@@ -140,10 +147,20 @@ while running:
 
     # Human player
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_UP]:
-        right_paddle.y -= paddle_speed
-    if keys[pygame.K_DOWN]:
-        right_paddle.y += paddle_speed
+    up=keys[pygame.K_UP]
+    down=keys[pygame.K_DOWN]
+
+    if (up and down) or (not up and not down):
+        right_paddle_dir = 0
+    else:
+        if up:
+            right_paddle_dir = -1
+        elif down:
+            right_paddle_dir = 1
+
+    right_paddle.y += right_paddle_dir * paddle_speed
+
+
 
     if right_paddle.top < 0:
         right_paddle.top=0
@@ -163,6 +180,17 @@ while running:
     # position: left score at 1/4 width, right score at 3/4 width
     screen.blit(left_text, (WIDTH // 4 - left_text.get_width() // 2, 20))
     screen.blit(right_text, (3 * WIDTH // 4 - right_text.get_width() // 2, 20))
+
+    # Saving the game state for the NN
+    state = [
+        cube_x / WIDTH,
+        cube_y / HEIGHT,
+        cube_vx / speed,  # roughly in [-1, 1]
+        cube_vy / speed,  # roughly in [-1, 1]
+        right_paddle.centery / HEIGHT,
+        left_paddle.centery / HEIGHT,
+
+    ]
 
     pygame.display.flip()      # update the full display
     clock.tick(60)             # limit to 60 FPS
