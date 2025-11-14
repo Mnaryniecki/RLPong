@@ -2,13 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-'''
+
 print(torch.version.__version__)
 print(torch.cuda.is_available())
 print(torch.version.cuda)
-if torch.cuda.is_available():
-    print(torch.cuda.get_device_name(0))
-'''
+print(torch.cuda.get_device_name(0))
+
 # We will fill these in once we finalize the state vector
 STATE_DIM = 8      # placeholder for now (ball pos/vel + paddle pos/dir)
 NUM_ACTIONS = 3    # up, stay, down
@@ -42,7 +41,7 @@ class PongAgent:
         except FileNotFoundError:
             print("no Weights found")
 
-    def act(self, state, stochastic=True , temperature=1):
+    def act(self, state, stochastic=False , temperature=1):
         # Converting python list state into a tensor
         state_t= torch.tensor(state , dtype=torch.float , device=self.device).unsqueeze(0)
 
@@ -55,14 +54,31 @@ class PongAgent:
             action = dist.sample().item()
         else:
             # Greedy algorithm otherwise
-            action = torch.argmax(logits , dim=1 ).item()
+            action = torch.argmax(logits , dim=-1 ).item()
 
 
         # DEBUG comment out if unused
-        print("STATE:",state )
+        #print("STATE:",state )
         #print("LOGITS:",logits.squeeze(0).cpu().numpy())
-        print("PROBS:",torch.softmax(logits / temperature, dim=-1).squeeze(0).cpu().numpy())
+        #print("PROBS:",torch.softmax(logits / temperature, dim=-1).squeeze(0).cpu().numpy())
         #print("ACTION:",action)
 
+
+        return action
+
+    def act_batch(self, state, stochastic=False , temperature=1):
+        # Converting python list state into a tensor
+        state_t= torch.tensor(state , dtype=torch.float , device=self.device)
+
+        with torch.no_grad():
+            logits = self.model(state_t)
+
+        if stochastic:
+            probs = torch.softmax(logits / temperature, dim=-1)
+            dist = torch.distributions.Categorical(probs=probs)
+            action = dist.sample()
+        else:
+            # Greedy algorithm otherwise
+            action = torch.argmax(logits , dim=-1 )
 
         return action
