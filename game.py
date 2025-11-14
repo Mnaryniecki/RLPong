@@ -82,7 +82,7 @@ def run_game(headless: bool = False):
 
 
     right_paddle = pygame.Rect(
-        WIDTH - 50 - 30,    # x (50px from right edge)
+        WIDTH - 50 - 20,    # x (50px from right edge)
         HEIGHT // 2 - 50,   # y
         20,                 # width
         100                  # height
@@ -265,11 +265,11 @@ def run_game(headless: bool = False):
             screen.blit(right_text, (3 * WIDTH // 4 - right_text.get_width() // 2, 20))
 
             pygame.display.flip()  # update the full display
-            # clock.tick(60)             # limit to 60 FPS
+            clock.tick(60)             # limit to 60 FPS
 
     pygame.quit()
     return winner , left_score, right_score , frames_this_game
 
 if __name__ == "__main__":
-    winner , l , r ,frames = run_game(headless=True)
+    winner , l , r ,frames = run_game(headless=False)
     sys.exit()
