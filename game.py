@@ -3,8 +3,12 @@ import sys
 import random
 import math
 
-pygame.init()
+from sympy.physics.units import action
 
+from agent import PongAgent
+
+pygame.init()
+agent = PongAgent()
 # Window
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -144,7 +148,7 @@ while running:
             right_paddle.y -= paddle_speed
 
     '''
-
+    '''
     # Human player
     keys = pygame.key.get_pressed()
     up=keys[pygame.K_UP]
@@ -157,10 +161,7 @@ while running:
             right_paddle_dir = -1
         elif down:
             right_paddle_dir = 1
-
-    right_paddle.y += right_paddle_dir * paddle_speed
-
-
+    '''
 
     if right_paddle.top < 0:
         right_paddle.top=0
@@ -188,9 +189,22 @@ while running:
         cube_vx / speed,  # roughly in [-1, 1]
         cube_vy / speed,  # roughly in [-1, 1]
         right_paddle.centery / HEIGHT,
+        right_paddle_dir,
         left_paddle.centery / HEIGHT,
-
+        left_paddle_dir
     ]
+
+    action =agent.act(state)
+
+    # Action to direction
+    if action == 0:
+        right_paddle_dir = -1
+    elif action == 1:
+        right_paddle_dir = 0
+    elif action == 2:
+        right_paddle_dir = 1
+
+    right_paddle.y += right_paddle_dir * paddle_speed
 
     pygame.display.flip()      # update the full display
     clock.tick(60)             # limit to 60 FPS
