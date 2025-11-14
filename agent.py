@@ -28,8 +28,19 @@ class PongNet(nn.Module):
 
 class PongAgent:
     def __init__(self, device =None):
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        if device is not None:
+            self.device = torch.device(device)
+        else:
+            self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.model = PongNet().to(self.device)
+
+        try:
+            state_dict = torch.load("pong_pretrained_teacher.pth",map_location=self.device)
+            self.model.load_state_dict(state_dict)
+            self.model.eval()
+            print("Loaded Pong pretrained teacher model")
+        except FileNotFoundError:
+            print("no Weights found")
 
     def act(self, state, stochastic=True , temperature=1):
         # Converting python list state into a tensor
@@ -46,12 +57,12 @@ class PongAgent:
             # Greedy algorithm otherwise
             action = torch.argmax(logits , dim=1 ).item()
 
-        '''
+
         # DEBUG comment out if unused
         print("STATE:",state )
-        print("LOGITS:",logits.squeeze(0).cpu().numpy())
-        print("PROBS:",probs.squeeze(0).cpu().numpy())
-        print("ACTION:",action)
-        '''
+        #print("LOGITS:",logits.squeeze(0).cpu().numpy())
+        print("PROBS:",torch.softmax(logits / temperature, dim=-1).squeeze(0).cpu().numpy())
+        #print("ACTION:",action)
+
 
         return action
