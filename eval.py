@@ -44,7 +44,10 @@ def evaluate_parallel(num_envs=8, episodes=20):
 
 if __name__ == "__main__":
     start = time.perf_counter()
-    evaluate_parallel(num_envs=50, episodes=10)
+    num_envs = 20
+    episodes = 10
+    evaluate_parallel(num_envs, episodes)
     end = time.perf_counter()
     elapsed = end - start
     print(f"Elapsed time: {elapsed:.2f} seconds")
+    print(f"Time per environment: {elapsed/(num_envs*episodes):.2f} seconds")

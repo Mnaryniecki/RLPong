@@ -1,12 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import os
 
 
 print(torch.version.__version__)
 print(torch.cuda.is_available())
 print(torch.version.cuda)
-print(torch.cuda.get_device_name(0))
+if torch.cuda.is_available():
+    print(torch.cuda.get_device_name(0))
 
 # We will fill these in once we finalize the state vector
 STATE_DIM = 8      # placeholder for now (ball pos/vel + paddle pos/dir)
@@ -30,16 +32,26 @@ class PongAgent:
         if device is not None:
             self.device = torch.device(device)
         else:
-            self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        print(f"PongAgent initialized on: {self.device}")
         self.model = PongNet().to(self.device)
 
-        try:
-            state_dict = torch.load("pong_pretrained_teacher.pth",map_location=self.device)
+        # Load RL weights if they exist, otherwise fallback to teacher, then random
+        if os.path.exists("pong_rl.pth"):
+            weights_path = "pong_rl.pth"
+            print(f"Loading RL weights: {weights_path}")
+        elif os.path.exists("pong_pretrained_teacher.pth"):
+            weights_path = "pong_pretrained_teacher.pth"
+            print(f"Loading Teacher weights: {weights_path}")
+        else:
+            weights_path = None
+            print("No weights found, using random initialization")
+
+        if weights_path:
+            state_dict = torch.load(weights_path, map_location=self.device, weights_only=True)
             self.model.load_state_dict(state_dict)
             self.model.eval()
-            print("Loaded Pong pretrained teacher model")
-        except FileNotFoundError:
-            print("no Weights found")
 
     def act(self, state, stochastic=False , temperature=1):
         # Converting python list state into a tensor

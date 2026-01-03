@@ -220,7 +220,7 @@ def run_game(headless: bool = False):
             left_paddle_dir
         ]
 
-        action =agent.act(state , stochastic=False)
+        action = agent.act(state, stochastic=True)
         teacher = teacher_action_from_state(state)
 
         #print("STATE:", state)

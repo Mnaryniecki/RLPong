@@ -1,6 +1,8 @@
 import pygame
 import sys
 
+from sympy import true
+
 from agent import PongAgent
 from env import PongEnv, WIDTH, HEIGHT, cube_size
 
@@ -17,6 +19,8 @@ def run_visual():
 
 
     agent = PongAgent()
+    right_wins = 0
+    total_games = 0
 
     running = True
     while running:
@@ -24,7 +28,7 @@ def run_visual():
             if event.type == pygame.QUIT:
                 running = False
 
-        action = agent.act(state, stochastic=False)
+        action = agent.act(state, stochastic=true)
 
         # Step Env
         state, reward, done, info = env.step(action)
@@ -50,9 +54,14 @@ def run_visual():
         screen.blit(right_text, (3*WIDTH // 4 - right_text.get_width() // 2,20))
 
         pygame.display.flip()
-        #clock.tick(60)
+        #clock.tick(90)
 
         if(done):
+            total_games += 1
+            if info["winner"] == "right":
+                right_wins += 1
+            
+            print(f"Game {total_games} | Winner: {info['winner']} | Win Rate: {right_wins/total_games*100:.1f}%")
             state = env.reset()
     pygame.quit()
     sys.exit()

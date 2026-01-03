@@ -12,20 +12,73 @@ class PongEnv:
     def __init__(self):
         self.reset()
 
+    def is_catchable(self, start_x, start_y, vx, vy):
+        """
+        Simulates the ball trajectory to check if the right paddle can physically reach it.
+        """
+        # If moving left, it's not the agent's problem (yet)
+        if vx < 0:
+            return True
+
+        # Simulation variables
+        sim_x, sim_y = start_x, start_y
+        sim_vx, sim_vy = vx, vy
+        
+        # Target X is the front of the right paddle
+        right_paddle_x = WIDTH - 50 - 20
+        
+        steps = 0
+        # Simulate until ball passes paddle
+        while sim_x + cube_size < right_paddle_x:
+            sim_x += sim_vx
+            sim_y += sim_vy
+
+            # Wall bounces
+            if sim_y <= 0:
+                sim_y = 0
+                sim_vy *= -1
+            elif sim_y + cube_size >= HEIGHT:
+                sim_y = HEIGHT - cube_size
+                sim_vy *= -1
+            
+            steps += 1
+            if steps > 1000: return True # Safety break
+
+        # Ball center at impact
+        ball_center_y = sim_y + cube_size / 2
+        
+        # How far can the paddle move in this time?
+        max_travel_dist = paddle_speed * steps
+        
+        # Distance needed to cover (paddle center to ball center)
+        # We subtract 50 because we only need the edge of the paddle to touch the ball center
+        dist_needed = abs(ball_center_y - self.right_y) - 50
+        
+        # If we are already close enough, dist_needed is negative, so it's catchable
+        return dist_needed <= max_travel_dist
+
     def reset_cube(self):
         x = WIDTH / 2 - cube_size / 2
         y = HEIGHT / 2 - cube_size / 2
 
-        # random angle but avoid purely horizontal directions
-        go_right = random.choice([True, False])
-        if go_right:
-            # from -pi/4 to pi/4 (towards the right)
-            r_angle = random.uniform(-math.pi / 4, math.pi / 4)
-        else:
-            # from 3pi/4 to 5pi/4 (towards the left)
-            r_angle = random.uniform(3 * math.pi / 4, 5 * math.pi / 4)
-        vx = math.cos(r_angle) * speed
-        vy = math.sin(r_angle) * speed
+        # Try to find a catchable angle (limit retries to avoid infinite loop)
+        for _ in range(100):
+            # random angle but avoid purely horizontal directions
+            go_right = random.choice([True, False])
+            if go_right:
+                # from -pi/4 to pi/4 (towards the right)
+                r_angle = random.uniform(-math.pi / 4, math.pi / 4)
+            else:
+                # from 3pi/4 to 5pi/4 (towards the left)
+                r_angle = random.uniform(3 * math.pi / 4, 5 * math.pi / 4)
+            
+            vx = math.cos(r_angle) * speed
+            vy = math.sin(r_angle) * speed
+            
+            # Check if this trajectory is fair
+            if self.is_catchable(x, y, vx, vy):
+                break
+                
         return x, y, vx, vy
 
     def reset(self):
