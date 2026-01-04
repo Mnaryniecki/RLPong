@@ -1,10 +1,9 @@
 import pygame
 import sys
 
-from sympy import true
-
 from agent import PongAgent
-from env import PongEnv, WIDTH, HEIGHT, cube_size
+from env import PongEnv
+from config import *
 
 def run_visual():
     pygame.init()
@@ -28,7 +27,7 @@ def run_visual():
             if event.type == pygame.QUIT:
                 running = False
 
-        action = agent.act(state, stochastic=true)
+        action = agent.act(state, stochastic=True)
 
         # Step Env
         state, reward, done, info = env.step(action)
@@ -37,10 +36,10 @@ def run_visual():
         screen.fill(pygame.Color('black'))
 
         #paddles height 100 width 20
-        left = pygame.Rect(50 , int(env.left_y-50),20 ,100)
-        right = pygame.Rect(WIDTH-50-20 , int(env.right_y-50),20 ,100)
+        left = pygame.Rect(PADDLE_LEFT_X , int(env.left_y - PADDLE_HALF_H), PADDLE_WIDTH , PADDLE_HEIGHT)
+        right = pygame.Rect(PADDLE_RIGHT_X , int(env.right_y - PADDLE_HALF_H), PADDLE_WIDTH , PADDLE_HEIGHT)
 
-        ball = pygame.Rect(int(env.cube_x),int(env.cube_y),cube_size,cube_size)
+        ball = pygame.Rect(int(env.cube_x),int(env.cube_y),CUBE_SIZE,CUBE_SIZE)
 
         pygame.draw.rect(screen, pygame.Color('white'), left)
         pygame.draw.rect(screen, pygame.Color('white'), right)
@@ -54,7 +53,7 @@ def run_visual():
         screen.blit(right_text, (3*WIDTH // 4 - right_text.get_width() // 2,20))
 
         pygame.display.flip()
-        #clock.tick(90)
+        clock.tick(60)
 
         if(done):
             total_games += 1

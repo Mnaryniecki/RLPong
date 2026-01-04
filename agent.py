@@ -17,9 +17,9 @@ NUM_ACTIONS = 3    # up, stay, down
 class PongNet(nn.Module):
     def __init__(self , state_dim=STATE_DIM , num_actions=NUM_ACTIONS):
         super().__init__()
-        self.fc1 = nn.Linear(state_dim , 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.out = nn.Linear(64, num_actions)
+        self.fc1 = nn.Linear(state_dim , 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.out = nn.Linear(256, num_actions)
 
     def forward(self, x):
         # x expected tensor of shape
@@ -28,7 +28,7 @@ class PongNet(nn.Module):
         return self.out(x) # Raw output not normalized
 
 class PongAgent:
-    def __init__(self, device =None):
+    def __init__(self, device=None, weights_file=None):
         if device is not None:
             self.device = torch.device(device)
         else:
@@ -37,21 +37,29 @@ class PongAgent:
         print(f"PongAgent initialized on: {self.device}")
         self.model = PongNet().to(self.device)
 
-        # Load RL weights if they exist, otherwise fallback to teacher, then random
-        if os.path.exists("pong_rl.pth"):
-            weights_path = "pong_rl.pth"
-            print(f"Loading RL weights: {weights_path}")
-        elif os.path.exists("pong_pretrained_teacher.pth"):
-            weights_path = "pong_pretrained_teacher.pth"
-            print(f"Loading Teacher weights: {weights_path}")
+        # Determine which weights to load
+        load_path = None
+        if weights_file:
+            if os.path.exists(weights_file):
+                load_path = weights_file
+                print(f"Loading specified weights: {load_path}")
+            else:
+                print(f"Warning: Specified weights file not found: {weights_file}. Using random initialization.")
         else:
-            weights_path = None
-            print("No weights found, using random initialization")
+            # Default fallback logic if no specific file is requested
+            if os.path.exists("pong_rl.pth"):
+                load_path = "pong_rl.pth"
+                print(f"Loading default RL weights: {load_path}")
+            elif os.path.exists("pong_pretrained_teacher.pth"):
+                load_path = "pong_pretrained_teacher.pth"
+                print(f"Loading default Teacher weights: {load_path}")
 
-        if weights_path:
-            state_dict = torch.load(weights_path, map_location=self.device, weights_only=True)
+        if load_path:
+            state_dict = torch.load(load_path, map_location=self.device, weights_only=True)
             self.model.load_state_dict(state_dict)
             self.model.eval()
+        elif not weights_file:
+            print("No default weights found, using random initialization.")
 
     def act(self, state, stochastic=False , temperature=1):
         # Converting python list state into a tensor

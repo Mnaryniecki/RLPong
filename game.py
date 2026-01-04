@@ -4,8 +4,7 @@ import random
 import math
 
 from agent import PongAgent
-
-MAX_FRAMES_PER_GAME = 5000  # tune this
+from config import *
 
 
 def teacher_action_from_state(state_check, margin=0.05):
@@ -21,19 +20,9 @@ def teacher_action_from_state(state_check, margin=0.05):
     else:
         return 1  # stay
 
-
-# Constant parameters
-WIDTH, HEIGHT = 800, 600
-cube_size = 20
-speed =10
-paddle_speed=4
-
-GAMES_TO_PLAY = 50
-POINTS_TO_WIN = 5
-
 def reset_cube():
-    x = WIDTH / 2 - cube_size / 2
-    y = HEIGHT / 2 - cube_size / 2
+    x = WIDTH / 2 - CUBE_SIZE / 2
+    y = HEIGHT / 2 - CUBE_SIZE / 2
 
     # random angle but avoid purely horizontal directions
     go_right = random.choice([True, False])
@@ -43,8 +32,8 @@ def reset_cube():
     else:
         # from 3pi/4 to 5pi/4 (towards the left)
         r_angle = random.uniform(3 * math.pi / 4, 5 * math.pi / 4)
-    vx = math.cos(r_angle) * speed
-    vy = math.sin(r_angle) * speed
+    vx = math.cos(r_angle) * BALL_SPEED
+    vy = math.sin(r_angle) * BALL_SPEED
 
     return x, y, vx, vy
 
@@ -75,17 +64,17 @@ def run_game(headless: bool = False):
 
     left_paddle = pygame.Rect(
         50,                 # x position
-        HEIGHT // 2 - 50,   # y position (centered vertically)
-        20,                 # width
-        100                 # height
+        HEIGHT // 2 - PADDLE_HALF_H,   # y position (centered vertically)
+        PADDLE_WIDTH,                 # width
+        PADDLE_HEIGHT                 # height
     )
 
 
     right_paddle = pygame.Rect(
-        WIDTH - 50 - 20,    # x (50px from right edge)
-        HEIGHT // 2 - 50,   # y
-        20,                 # width
-        100                  # height
+        PADDLE_RIGHT_X,    # x (50px from right edge)
+        HEIGHT // 2 - PADDLE_HALF_H,   # y
+        PADDLE_WIDTH,                 # width
+        PADDLE_HEIGHT                  # height
     )
 
     left_paddle_dir = 0
@@ -105,8 +94,8 @@ def run_game(headless: bool = False):
         left_score = 0
         right_score = 0
 
-        left_paddle.y = HEIGHT // 2 - 50
-        right_paddle.y = HEIGHT // 2 - 50
+        left_paddle.y = HEIGHT // 2 - PADDLE_HALF_H
+        right_paddle.y = HEIGHT // 2 - PADDLE_HALF_H
 
         left_paddle_dir = 0
         right_paddle_dir = 0
@@ -130,7 +119,7 @@ def run_game(headless: bool = False):
         cube_x += cube_vx
         cube_y += cube_vy
 
-        cube = pygame.Rect(int(cube_x), int(cube_y), cube_size, cube_size)
+        cube = pygame.Rect(int(cube_x), int(cube_y), CUBE_SIZE, CUBE_SIZE)
 
         # Logic
         # Collision
@@ -138,8 +127,8 @@ def run_game(headless: bool = False):
         if cube_y <= 0:
             cube_y = 0
             cube_vy *= -1
-        elif cube_y + cube_size >= HEIGHT:
-            cube_y = HEIGHT - cube_size
+        elif cube_y + CUBE_SIZE >= HEIGHT:
+            cube_y = HEIGHT - CUBE_SIZE
             cube_vy *= -1
         # Paddles
         if cube.colliderect(left_paddle) and cube_vx < 0:
@@ -151,9 +140,8 @@ def run_game(headless: bool = False):
 
             # Move the cube to the edge of the paddle to avoid it getting stuck
             cube.x=left_paddle.right
-            cube_vx *= -1
-            cube_vx = math.cos(angle) * speed
-            cube_vy = math.sin(angle) * speed
+            cube_vx = math.cos(angle) * BALL_SPEED
+            cube_vy = math.sin(angle) * BALL_SPEED
 
         if cube.colliderect(right_paddle) and cube_vx > 0:
             relative_intersect_y = (cube.centery - right_paddle.centery)/(right_paddle.height/2)
@@ -163,10 +151,9 @@ def run_game(headless: bool = False):
 
 
             # Move the cube to the edge of the paddle to avoid it getting stuck
-            cube.x=right_paddle.left
-            cube_vx *= -1
-            cube_vx = math.cos(angle) * speed
-            cube_vy = math.sin(angle) * speed
+            cube.x=right_paddle.left - CUBE_SIZE
+            cube_vx = math.cos(angle) * BALL_SPEED
+            cube_vy = math.sin(angle) * BALL_SPEED
 
         # Scoring & reset if cube leaves the screen
         if cube_x > WIDTH:
@@ -174,7 +161,7 @@ def run_game(headless: bool = False):
             left_score += 1
             cube_x, cube_y, cube_vx, cube_vy = reset_cube()
 
-        elif cube_x + cube_size < 0:
+        elif cube_x + CUBE_SIZE < 0:
             # left side out → right player scores
             right_score += 1
             cube_x, cube_y, cube_vx, cube_vy = reset_cube()
@@ -189,10 +176,10 @@ def run_game(headless: bool = False):
         # Enemy algorithm
         if abs(cube.centery-left_paddle.centery) > 5:
             if cube.centery-left_paddle.centery > 0:
-                left_paddle.y += paddle_speed
+                left_paddle.y += PADDLE_SPEED
                 left_paddle_dir = 1
             else:
-                left_paddle.y -= paddle_speed
+                left_paddle.y -= PADDLE_SPEED
                 left_paddle_dir = -1
         else:
             left_paddle_dir = 0
@@ -212,8 +199,8 @@ def run_game(headless: bool = False):
         state = [
             cube_x / WIDTH,
             cube_y / HEIGHT,
-            cube_vx / speed,  # roughly in [-1, 1]
-            cube_vy / speed,  # roughly in [-1, 1]
+            cube_vx / BALL_SPEED,  # roughly in [-1, 1]
+            cube_vy / BALL_SPEED,  # roughly in [-1, 1]
             right_paddle.centery / HEIGHT,
             right_paddle_dir,
             left_paddle.centery / HEIGHT,
@@ -234,7 +221,7 @@ def run_game(headless: bool = False):
         elif action == 2:
             right_paddle_dir = 1
 
-        right_paddle.y += right_paddle_dir * paddle_speed
+        right_paddle.y += right_paddle_dir * PADDLE_SPEED
 
         if left_score >= POINTS_TO_WIN or right_score >= POINTS_TO_WIN:
             if right_score > left_score:
