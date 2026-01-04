@@ -201,6 +201,12 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Project-specific files
+live_plotter.py
+*.csv
+*.png
+*.pth
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

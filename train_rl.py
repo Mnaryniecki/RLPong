@@ -16,52 +16,12 @@ NUM_ENVS = 256          # Number of parallel games (Batch Size)
 BATCH_UPDATES = 1000    # Number of gradient updates to perform
 TRAINING_MODE = 'continue' # Options: 'continue' (loads pong_rl.pth), 'teacher' (loads pong_pretrained_teacher.pth), 'scratch'
 # Total Games Played = NUM_ENVS * BATCH_UPDATES (e.g., 32 * 1000 = 32,000 games)
-
-def train():
-    # Initialize multiple environments
-    envs = [PongEnv() for _ in range(NUM_ENVS)]
-    
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Training on {device} with {NUM_ENVS} parallel environments.")
-
-    # Initialize Policy Network
-    policy = PongNet(STATE_DIM, NUM_ACTIONS).to(device)
-
-    # --- Weight Loading with Waterfall Logic ---
-    weights_loaded = False
-
-    # Default to 'continue' logic if the mode is invalid
-    effective_mode = TRAINING_MODE if TRAINING_MODE in ['continue', 'teacher', 'scratch'] else 'continue'
-    if effective_mode != TRAINING_MODE:
-        print(f"\nWarning: Invalid TRAINING_MODE '{TRAINING_MODE}'. Defaulting to 'continue'.")
-
-    if effective_mode == 'continue':
-        if os.path.exists("pong_rl.pth"):
-            print("\nLoading weights from last session (pong_rl.pth) to continue training...")
-            policy.load_state_dict(torch.load("pong_rl.pth", map_location=device, weights_only=True))
-            weights_loaded = True
-        else:
-            print("\nCould not find 'pong_rl.pth'. Falling back to teacher model...")
-
-    if effective_mode in ['continue', 'teacher'] and not weights_loaded:
-        if os.path.exists("pong_pretrained_teacher.pth"):
-            print("\nLoading teacher weights (pong_pretrained_teacher.pth) to start fine-tuning...")
-            policy.load_state_dict(torch.load("pong_pretrained_teacher.pth", map_location=device, weights_only=True))
-            weights_loaded = True
-        elif effective_mode == 'teacher': # Only print if teacher was the primary goal
-            print("\nCould not find 'pong_pretrained_teacher.pth'. Falling back to scratch...")
-
-    if not weights_loaded:
-        print("\nStarting training from scratch with random weights...")
-
-    optimizer = optim.Adam(policy.parameters(), lr=LEARNING_RATE)
-
+def run_training_updates(policy, optimizer, envs, device, start_update, num_updates, best_avg_reward):
     # Metrics for logging
     reward_history = deque(maxlen=100)
     win_history = deque(maxlen=100)
-    best_avg_reward = -float('inf')
 
-    for update in range(1, BATCH_UPDATES + 1):
+    for update in range(start_update, start_update + num_updates):
         # Reset all environments for the new batch
         states = [env.reset() for env in envs]
 
@@ -69,6 +29,7 @@ def train():
         # We need a list of lists because each env has its own trajectory
         batch_log_probs = [[] for _ in range(NUM_ENVS)]
         batch_rewards = [[] for _ in range(NUM_ENVS)]
+        num_finished_envs = 0
         
         # Track which envs are still running in this batch
         active_envs = [True] * NUM_ENVS
@@ -106,6 +67,7 @@ def train():
                 if done:
                     active_envs[i] = False
                     # Record metrics
+                    num_finished_envs += 1
                     reward_history.append(sum(batch_rewards[i]))
                     win_history.append(1 if info["winner"] == "right" else 0)
 
@@ -155,7 +117,7 @@ def train():
         win_rate = sum(win_history) / len(win_history) * 100
 
         avg_loss = final_loss.item()
-        print(f"Game {total_games:6d} | Avg Reward: {avg_reward:5.2f} | Win Rate: {win_rate:3.0f}% | Loss: {avg_loss:.2f} | Entropy: {entropy_bonus.item():.2f}", end='\r', flush=True)
+        print(f"  Update {update:4d}: Games {total_games:6d} | Avg Reward: {avg_reward:5.2f} | Win Rate: {win_rate:3.0f}% | Loss: {avg_loss:.2f} | Entropy: {entropy_bonus.item():.2f}", end='\r', flush=True)
 
         if update % 10 == 0: # Save every 10 updates (2560 games)
             print()  # Newline to preserve the log
@@ -168,6 +130,47 @@ def train():
                 print(f"New best model found! Avg Reward: {avg_reward:.2f}. Saving to pong_best.pth...")
                 torch.save(policy.state_dict(), "pong_best.pth")
 
+    return best_avg_reward
+
+def train():
+    # Initialize multiple environments
+    envs = [PongEnv() for _ in range(NUM_ENVS)]
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Training on {device} with {NUM_ENVS} parallel environments.")
+
+    # Initialize Policy Network
+    policy = PongNet(STATE_DIM, NUM_ACTIONS).to(device)
+
+    # --- Weight Loading with Waterfall Logic ---
+    weights_loaded = False
+
+    # Default to 'continue' logic if the mode is invalid
+    effective_mode = TRAINING_MODE if TRAINING_MODE in ['continue', 'teacher', 'scratch'] else 'continue'
+    if effective_mode != TRAINING_MODE:
+        print(f"\nWarning: Invalid TRAINING_MODE '{TRAINING_MODE}'. Defaulting to 'continue'.")
+
+    if effective_mode == 'continue':
+        if os.path.exists("pong_rl.pth"):
+            print("\nLoading weights from last session (pong_rl.pth) to continue training...")
+            policy.load_state_dict(torch.load("pong_rl.pth", map_location=device, weights_only=True))
+            weights_loaded = True
+        else:
+            print("\nCould not find 'pong_rl.pth'. Falling back to teacher model...")
+
+    if effective_mode in ['continue', 'teacher'] and not weights_loaded:
+        if os.path.exists("pong_pretrained_teacher.pth"):
+            print("\nLoading teacher weights (pong_pretrained_teacher.pth) to start fine-tuning...")
+            policy.load_state_dict(torch.load("pong_pretrained_teacher.pth", map_location=device, weights_only=True))
+            weights_loaded = True
+        elif effective_mode == 'teacher': # Only print if teacher was the primary goal
+            print("\nCould not find 'pong_pretrained_teacher.pth'. Falling back to scratch...")
+
+    if not weights_loaded:
+        print("\nStarting training from scratch with random weights...")
+
+    optimizer = optim.Adam(policy.parameters(), lr=LEARNING_RATE)
+    run_training_updates(policy, optimizer, envs, device, start_update=1, num_updates=BATCH_UPDATES, best_avg_reward=-float('inf'))
     print("Training Complete. Saved to pong_rl.pth")
 
 

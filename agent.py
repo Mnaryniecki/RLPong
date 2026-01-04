@@ -39,13 +39,16 @@ class PongAgent:
 
         # Determine which weights to load
         load_path = None
-        if weights_file:
+        if weights_file == 'scratch':
+            print("Initializing agent with random weights (scratch).")
+            # load_path remains None, so no weights are loaded
+        elif weights_file: # A file path was provided
             if os.path.exists(weights_file):
                 load_path = weights_file
                 print(f"Loading specified weights: {load_path}")
             else:
                 print(f"Warning: Specified weights file not found: {weights_file}. Using random initialization.")
-        else:
+        else: # weights_file is None, use fallback logic
             # Default fallback logic if no specific file is requested
             if os.path.exists("pong_rl.pth"):
                 load_path = "pong_rl.pth"
@@ -58,7 +61,7 @@ class PongAgent:
             state_dict = torch.load(load_path, map_location=self.device, weights_only=True)
             self.model.load_state_dict(state_dict)
             self.model.eval()
-        elif not weights_file:
+        elif weights_file is None:
             print("No default weights found, using random initialization.")
 
     def act(self, state, stochastic=False , temperature=1):

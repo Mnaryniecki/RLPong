@@ -17,7 +17,7 @@ def run_visual():
     state = env.reset()
 
 
-    agent = PongAgent()
+    agent = PongAgent(weights_file="pong_best.pth")
     right_wins = 0
     total_games = 0
 
