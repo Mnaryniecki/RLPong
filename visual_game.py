@@ -1,11 +1,13 @@
 import pygame
 import sys
+import os
+import argparse
 
 from agent import PongAgent
 from env import PongEnv
 from config import *
 
-def run_visual():
+def run_visual(weights_path):
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption('Pong')
@@ -17,7 +19,7 @@ def run_visual():
     state = env.reset()
 
 
-    agent = PongAgent(weights_file="pong_best.pth")
+    agent = PongAgent(weights_file=weights_path)
     right_wins = 0
     total_games = 0
 
@@ -66,4 +68,4 @@ def run_visual():
     sys.exit()
 
 if __name__ == '__main__':
-    run_visual()
+    run_visual("pong_best.pth")

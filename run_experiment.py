@@ -9,10 +9,10 @@ from eval import evaluate_parallel
 from train_rl import run_training_updates, LEARNING_RATE, NUM_ENVS
 
 # --- Experiment Configuration ---
-TOTAL_TRAINING_UPDATES = 200  # Total number of training batches to run
-UPDATES_PER_EVAL = 10        # How often to evaluate the model (should match save frequency)
+TOTAL_TRAINING_UPDATES = 1024  # Total number of training batches to run
+UPDATES_PER_EVAL = 16        # How often to evaluate the model (should match save frequency)
 EVAL_ENVS = 128               # Number of parallel environments for evaluation
-EVAL_EPISODES = 10            # Number of games each environment plays during evaluation
+EVAL_EPISODES = 16            # Number of games each environment plays during evaluation
 
 
 def main():
@@ -24,7 +24,7 @@ def main():
     if os.path.exists("pong_best.pth"):
         os.remove("pong_best.pth")
     print("Cleanup complete.")
-    
+
     # --- Setup CSV Logging ---
     csv_filename = "experiment_results.csv"
     print(f"--- Logging results to {csv_filename} ---")
@@ -51,7 +51,7 @@ def main():
         print("\n--- Starting Incremental RL Training ---")
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         policy = PongNet(STATE_DIM, NUM_ACTIONS).to(device)
-        
+
         # Start fine-tuning from the teacher model if it exists
         if os.path.exists("pong_pretrained_teacher.pth"):
             print("Loading teacher weights to begin fine-tuning...")
