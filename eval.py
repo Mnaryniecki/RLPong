@@ -21,7 +21,7 @@ def evaluate_parallel(weights_file, num_envs=256, episodes=20, verbose=True):
 
         while not all(dones):
             # Get a batch of actions from the agent (runs on GPU)
-            actions_tensor = agent.act_batch(states, stochastic=True)
+            actions_tensor = agent.act_batch(states, stochastic=False)
             # Move all actions to CPU at once for the environments
             actions_np = actions_tensor.cpu().numpy()
 

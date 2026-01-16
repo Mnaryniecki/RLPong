@@ -16,7 +16,7 @@ NUM_ENVS = 256          # Number of parallel games (Batch Size)
 BATCH_UPDATES = 1000    # Number of gradient updates to perform
 TRAINING_MODE = 'continue' # Options: 'continue' (loads pong_rl.pth), 'teacher' (loads pong_pretrained_teacher.pth), 'scratch'
 # Total Games Played = NUM_ENVS * BATCH_UPDATES (e.g., 32 * 1000 = 32,000 games)
-def run_training_updates(policy, optimizer, envs, device, start_update, num_updates, best_avg_reward):
+def run_training_updates(policy, optimizer, envs, device, start_update, num_updates, best_avg_reward, save_prefix="pong"):
     # Metrics for logging
     reward_history = deque(maxlen=100)
     win_history = deque(maxlen=100)
@@ -122,13 +122,13 @@ def run_training_updates(policy, optimizer, envs, device, start_update, num_upda
         if update % 10 == 0: # Save every 10 updates (2560 games)
             print()  # Newline to preserve the log
             # Save the RL weights
-            torch.save(policy.state_dict(), "pong_rl.pth")
+            torch.save(policy.state_dict(), f"{save_prefix}_rl.pth")
 
             # Check for new best model and save it separately
             if avg_reward > best_avg_reward:
                 best_avg_reward = avg_reward
-                print(f"New best model found! Avg Reward: {avg_reward:.2f}. Saving to pong_best.pth...")
-                torch.save(policy.state_dict(), "pong_best.pth")
+                print(f"New best model found! Avg Reward: {avg_reward:.2f}. Saving to {save_prefix}_best.pth...")
+                torch.save(policy.state_dict(), f"{save_prefix}_best.pth")
 
     return best_avg_reward
 
@@ -170,7 +170,7 @@ def train():
         print("\nStarting training from scratch with random weights...")
 
     optimizer = optim.Adam(policy.parameters(), lr=LEARNING_RATE)
-    run_training_updates(policy, optimizer, envs, device, start_update=1, num_updates=BATCH_UPDATES, best_avg_reward=-float('inf'))
+    run_training_updates(policy, optimizer, envs, device, start_update=1, num_updates=BATCH_UPDATES, best_avg_reward=-float('inf'), save_prefix="pong")
     print("Training Complete. Saved to pong_rl.pth")
 
 

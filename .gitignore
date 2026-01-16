@@ -206,6 +206,8 @@ live_plotter.py
 *.csv
 *.png
 *.pth
+*.cls
+*.pdf
 
 # Marimo
 marimo/_static/

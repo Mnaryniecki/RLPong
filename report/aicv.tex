@@ -1,0 +1,294 @@
+\documentclass{pwrarticle}
+
+% --- Language and Encoding ---
+\usepackage[english]{babel}
+\usepackage{amsopn} % English language support
+
+% --- Document Metadata (PWr Specific) ---
+\title{Applying Reinforcement Learning to the Classic Game Pong\\[0.5em]\large Project Definition, Midterm and Final Report}\author{Mateusz Naryniecki}
+\studentID{278154}
+\faculty{Faculty of Electronics, Photonics and Microsystems}
+\course{Artificial Inteligence and Computer Vision}
+\date{\today}
+
+% --- Logo Path ---
+\logopath{logo PWr kolor pion ang.png} % The class looks inside the 'logotype/' folder
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+	\section{Project name}
+	RLPong [Name WIP]
+
+	\section{Scope and short description of project}
+	I am going to apply reinforcement learning to the game Pong where the Player (in this case neural network AI) is put up against a typical algorithm that tracks the ball without anything else.
+
+	\section{Case studies}
+    Inspiration\\
+    \url{https://www.youtube.com/watch?v=DmQ4Dqxs0HI}\\[0.3em]
+    The approach I'm going to use\\
+    \url{https://www.youtube.com/watch?v=vXtfdGphr3c&t=13s}\\[0.3em]
+    Article on Github by Andrej Karpathy\\
+    \url{https://karpathy.github.io/2016/05/31/rl}
+
+	\section{How you want to solve the problem?}
+
+The goal is to train an AI agent to play Pong using reinforcement learning. Instead of raw images, the agent will use 8 numerical values as input: the position and velocity of both paddles and the ball. This makes the problem simpler and faster to train.
+
+\subsection{Approach}
+First, I will build a simple version of Pong where these 8 values are available each frame. The AI will choose one of three actions: move up, move down, or stay still. The goal is to learn which actions help it win more often.
+
+\subsection{Neural network}
+A small neural network will be used to decide what to do. It will take the 8 input values, process them through a few layers of neurons, and output the probability of each action. The network will be trained to pick actions that lead to higher scores over time.
+
+\subsection{Pretraining and learning}
+At the beginning, I plan to train the network in a supervised way by copying a simple rule-based opponent that tracks the ball. This will give the AI some basic skills before reinforcement learning starts. Then I will use a standard reinforcement learning algorithm, such as a policy gradient method, to let the AI improve through trial and error.
+
+\subsection{Rewards}
+The agent will get a reward of +1 for scoring a point and -1 for losing a point. These rewards will guide the learning process so the AI learns to keep the ball in play and eventually beat the opponent.
+
+\subsection{Evaluation}
+Progress will be measured by how often the AI wins against the basic opponent and how its average reward increases over time. I will also record and plot training results to show improvements during learning.
+
+	\section{Short plan with some big milestones together with dates}
+
+\begin{itemize}
+    \item \textbf{31.10 – 16.11.2025 (Design)} — Set up the Pong environment and define the 8 input values: the positions and velocities of both paddles and the ball. Make sure the basic game loop and the rule-based opponent work correctly.
+
+    \item \textbf{17.11 – 30.11.2025 (Neural network setup)} — Build a small neural network (MLP) that takes the 8 inputs and outputs the three possible actions (up, down and optionally stay). Test the network to ensure it produces reasonable outputs.
+
+    \item \textbf{01.12 – 14.12.2025 (Supervised pretraining)} — Collect gameplay data from the rule-based opponent and train the network to imitate it. Verify that the AI can follow the ball and react properly.
+
+    \item \textbf{15.12.2025 – 04.01.2026 (Reinforcement learning)} — Train the AI using reinforcement learning to improve by playing against the opponent and learning from rewards.
+
+    \item \textbf{05.01 – 11.01.2026 (Evaluation and fine-tuning)} — Measure the AI’s performance, record win rates, adjust hyperparameters if needed, and save gameplay for analysis.
+
+    \item \textbf{12.01 – 18.01.2026 (Final report)} — Write and finalise the documentation, including explanations of methods, results, and ideas for future improvements, ensuring it is ready for submission by the deadline.
+\end{itemize}
+
+\section{Agreement}
+	(proposal) I, Mateusz Naryniecki agree to deliver the project within defined timeline, within defined scope. Mateusz Cholewiński, PhD is confirming to grade it in an appropriate way, taking following document as a base. All changes, especially in timeline, scope, has to be agreed by both parties.
+
+% =================================================================
+% MIDTERM REPORT PART
+% =================================================================
+
+\section{Midterm report: implementation status}
+
+This section describes what has been implemented so far, how it matches the original plan, and what remains to be done.
+
+\subsection{Environment and game dynamics}
+
+A custom Pong environment \texttt{PongEnv} has been implemented in Python. The game is played on a fixed-size window of \texttt{800x600} pixels with a square ball of size \texttt{20} and paddles of height \texttt{100} and width \texttt{20}. The ball speed is fixed at a constant magnitude, but its direction is initialised with a random angle so that it always moves either towards the left or towards the right side of the screen.
+
+On reset, the environment:
+\begin{itemize}
+    \item Resets both scores to zero.
+    \item Places both paddles in the vertical centre.
+    \item Resets the ball to the centre with a random initial direction biased horizontally.
+\end{itemize}
+
+Collisions with the top and bottom walls are handled by inverting the vertical component of the ball velocity. Paddle collisions are implemented such that the outgoing angle depends on where the ball hits the paddle (more extreme angles near the edges, more horizontal in the centre). This produces more interesting and less predictable trajectories.
+
+A game terminates if either player reaches a fixed number of points (e.g. 5) or when a maximum number of frames is exceeded, in which case the episode ends with a ``timeout'' result. The environment returns both a scalar reward and an \texttt{info} dictionary that stores who won, the scores, and the total number of frames.
+
+\subsection{State representation and action space}
+
+As planned, the state is represented by 8 normalised numerical values:
+\begin{itemize}
+    \item Ball horizontal position: $x_{\text{ball}} / \text{WIDTH}$.
+    \item Ball vertical position: $y_{\text{ball}} / \text{HEIGHT}$.
+    \item Ball horizontal velocity: $v_{x} / \text{speed}$.
+    \item Ball vertical velocity: $v_{y} / \text{speed}$.
+    \item Right paddle vertical position: $y_{\text{right}} / \text{HEIGHT}$.
+    \item Right paddle movement direction (last action): $\{-1, 0, +1\}$.
+    \item Left paddle vertical position: $y_{\text{left}} / \text{HEIGHT}$.
+    \item Left paddle movement direction: $\{-1, 0, +1\}$.
+\end{itemize}
+
+This matches the initial design decision to avoid raw pixel inputs, simplifying the learning problem and speeding up training.
+
+The action space for the learning agent (right paddle) consists of three discrete moves:
+\begin{itemize}
+    \item \textbf{0}: move up,
+    \item \textbf{1}: stay still,
+    \item \textbf{2}: move down.
+\end{itemize}
+
+The left paddle is controlled by a simple rule-based policy that tries to track the ball vertically with a fixed speed. This opponent acts as a baseline and as a teacher for pretraining.
+
+\subsection{Reward structure}
+
+The reward function follows the original plan:
+\begin{itemize}
+    \item The right (learning) agent receives $+1$ for scoring a point.
+    \item It receives $-1$ for losing a point.
+    \item Intermediate frames give $0$ reward.
+\end{itemize}
+
+I might change the reward system to penalize and reward later actions as they are probably the most impactful on the victory/loss
+
+\subsection{Neural network policy}
+
+The policy network, \texttt{PongNet}, is a small multilayer perceptron (MLP) with the following structure:
+\begin{itemize}
+    \item Input layer: dimension 8 (state vector).
+    \item Two hidden layers with 64 units each and ReLU activations.
+    \item Output layer: 3 units corresponding to the three possible actions.
+\end{itemize}
+
+The network outputs raw logits. During action selection, either a greedy policy (argmax over logits) or a stochastic policy (sampling from a softmax distribution with optional temperature) can be used. A wrapper class \texttt{PongAgent} handles device selection (CPU/GPU), model loading, and action selection in both single-state and batched mode.
+
+\section{Midterm report: supervised pretraining}
+
+\subsection{Synthetic teacher data}
+
+Instead of recording data from live games, synthetic supervision data is generated directly from the state description. Each sample consists of:
+\begin{itemize}
+    \item A random ball position $(x, y)$, uniformly sampled in $[0, 1] \times [0, 1]$.
+    \item A random ball velocity $(v_x, v_y)$, where each component is sampled from $[-1, 1]$.
+    \item Random paddle positions $y_{\text{left}}, y_{\text{right}}$ in $[0, 1]$.
+    \item Paddle directions initially set to $0$.
+\end{itemize}
+
+Given this state, a ``teacher'' rule determines the desired action for the right paddle mimicking the opponent in order to have enough "understanding" to continue learning :
+\begin{itemize}
+    \item If the ball is clearly above the right paddle (difference $< -\text{margin}$), the correct action is \texttt{up}.
+    \item If the ball is clearly below the right paddle (difference $> \text{margin}$), the correct action is \texttt{down}.
+    \item If the ball is already aligned (within the margin), the action is \texttt{stay}.
+\end{itemize}
+
+This generates a dataset of $(\text{state}, \text{action})$ pairs that approximate how a simple tracking algorithm would behave, but in a much more diversified set of situations than just replaying a few games.
+
+\subsection{Supervised training procedure}
+
+A separate script performs supervised training of \texttt{PongNet} on the synthetic dataset. The key components are:
+\begin{itemize}
+    \item Loss function: cross-entropy between the predicted logits and the teacher action labels.
+    \item Optimiser: Adam with a learning rate of $10^{-3}$.
+    \item Number of samples: e.g.\ 20\,000 synthetic states.
+    \item Training loop: multiple epochs over all data, printing the loss for monitoring.
+\end{itemize}
+
+After training converges, the model parameters are saved to a file (e.g.\ \texttt{pong\_pretrained\_teacher.pth}). The \texttt{PongAgent} automatically attempts to load these weights on initialisation and switches to evaluation mode for inference.
+
+At this midterm stage, the supervised pretraining phase is implemented and ready to be combined with reinforcement learning.
+
+\section{Midterm report: evaluation and visualisation}
+
+\subsection{Vectorised evaluation}
+
+To efficiently measure the performance of the current agent, a vectorised evaluation script is provided. It creates multiple independent \texttt{PongEnv} instances, runs them in parallel using batched action selection (\texttt{act\_batch}), and counts:
+\begin{itemize}
+    \item Number of games won by the right (learning) agent.
+    \item Number of games won by the left (rule-based) opponent.
+    \item Number of timeouts (no player reaches the winning score before the frame limit).
+\end{itemize}
+
+By increasing the number of environments and episodes, this script allows for statistically meaningful estimates of win rates and for timing measurements (e.g.\ average time per environment per game). These metrics will later be used to compare:
+\begin{itemize}
+    \item The initial random policy.
+    \item The supervised-pretrained policy.
+    \item The final reinforcement learning policy.
+\end{itemize}
+
+\subsection{Graphical interface}
+
+For qualitative inspection and debugging, a simple visualisation using \texttt{pygame} has been implemented. It:
+\begin{itemize}
+    \item Opens a window of size \texttt{WIDTH} by \texttt{HEIGHT}.
+    \item Draws the left and right paddles and the ball each frame.
+    \item Renders the current score of both players.
+    \item Lets the right paddle be controlled by the current \texttt{PongAgent} policy.
+\end{itemize}
+
+This visualisation is useful for checking whether the pre-trained policy behaves as expected: tracking the ball, reacting to bounces, and recovering after losing points.
+
+\section{Midterm report: comparison with original plan}
+
+Here is how the current status relates to the milestones defined in the project proposal:
+
+\begin{itemize}
+    \item \textbf{31.10 – 16.11.2025 (Design):} The Pong environment, state representation, reward function, and rule-based opponent have been fully implemented and tested. The environment supports both single-episode runs and batched evaluation.
+
+    \item \textbf{17.11 – 30.11.2025 (Neural network setup):} The MLP architecture has been implemented and integrated with an agent wrapper. Action selection supports both greedy and stochastic modes, and the network can be run on CPU or GPU.
+
+    \item \textbf{01.12 – 14.12.2025 (Supervised pretraining):} The synthetic teacher data generation and supervised training script are implemented. The network can be pretrained to imitate a ball-tracking policy and saved to disk for later use in reinforcement learning.
+
+    \item \textbf{15.12.2025 – 04.01.2026 (Reinforcement learning):} Reinforcement learning (e.g.\ policy gradients or another on-policy method) is the next step. The environment and pretrained policy are ready, but the RL training loop and logging have not yet been implemented at this midterm stage.
+
+    \item \textbf{05.01 – 11.01.2026 (Evaluation and fine-tuning):} The evaluation infrastructure is already partially in place via the parallel evaluation script. It will be extended to log learning curves (win rate, average reward) during RL training.
+
+    \item \textbf{12.01 – 18.01.2026 (Final report):} The current document serves as a combined project definition and midterm report. A final extended version will include detailed experimental results, plots, and a discussion of limitations and possible improvements.
+\end{itemize}
+
+\section{Next steps}
+
+The main next steps towards the final project are:
+
+\begin{itemize}
+    \item Implement a reinforcement learning algorithm (e.g.\ REINFORCE or an actor-critic variant) on top of the existing environment and pretrained policy.
+    \item Add logging of episode returns, win rates, and possibly entropy or KL-divergence to monitor exploration.
+    \item Run experiments comparing:
+    \begin{itemize}
+        \item Training from scratch vs.\ starting from the supervised teacher.
+        \item Different reward shaping or curriculum variations (e.g.\ starting with slower ball speed).
+    \end{itemize}
+    \item Produce plots and visualisations of learning progress.
+    \item Integrate selected games into the report via screenshots or short descriptions of interesting behaviours (e.g.\ long rallies, exploiting paddle angles).
+\end{itemize}
+
+These steps will complete the transition from a working Pong environment and supervised policy to a fully trained reinforcement learning agent, and will provide the material for the final report.
+
+\section{Final report: Reinforcement Learning Implementation}
+
+Following the midterm milestones, the focus shifted to implementing the Reinforcement Learning (RL) loop, automating the experimental workflow, and establishing a robust evaluation pipeline.
+
+\subsection{Algorithm and Training Loop}
+The REINFORCE algorithm (Monte Carlo Policy Gradient) was selected for training. The implementation in \texttt{train\_rl.py} utilizes:
+\begin{itemize}
+    \item \textbf{Parallel Environments:} To stabilize gradients and speed up data collection, 256 independent \texttt{PongEnv} instances run in parallel.
+    \item \textbf{Hyperparameters:}
+    \begin{itemize}
+        \item Learning Rate: $1 \times 10^{-4}$ (Adam optimizer).
+        \item Discount Factor ($\gamma$): 0.99.
+        \item Entropy Coefficient: 0.01 (to encourage exploration).
+    \end{itemize}
+    \item \textbf{Batch Updates:} Gradients are computed and applied after collecting trajectories from all parallel environments.
+\end{itemize}
+
+To ensure the agent learns a robust policy, the training process includes a ``waterfall'' loading mechanism: it attempts to resume from a previous RL checkpoint, falls back to the supervised ``teacher'' model, and finally defaults to random initialization if no weights are found.
+
+\subsection{Experiment Orchestration}
+A dedicated script, \texttt{run\_experiment.py}, was developed to automate the full experimental lifecycle. It performs the following steps sequentially:
+\begin{enumerate}
+    \item \textbf{Cleanup:} Removes artifacts from previous runs to ensure a clean state.
+    \item \textbf{Baseline Evaluation:} Evaluates a random agent (``Scratch'') and the supervised agent (``Teacher'') to establish performance benchmarks before RL begins.
+    \item \textbf{Incremental Training:} Runs the training loop in blocks (e.g., 16 updates), pausing to evaluate the current model against the rule-based opponent.
+    \item \textbf{Logging:} Results (Win Rate, Average Reward) are logged to \texttt{experiment\_results.csv} after every evaluation step.
+\end{enumerate}
+
+\subsection{Model Selection and Evaluation}
+Evaluation is performed using \texttt{eval.py}, which tests the agent in 128 parallel environments for a fixed number of episodes.
+Crucially, the training loop tracks the \textbf{Average Reward} (not just win rate) to identify the best-performing model. The weights corresponding to the highest average reward are saved separately as \texttt{pong\_best.pth}. This ensures that the final deployed agent represents the peak of training performance rather than the latest (potentially unstable) iteration.
+
+\subsection{Results Visualization}
+A plotting utility, \texttt{plot\_results.py}, was implemented to visualize the training progress. It reads the generated CSV logs and produces a dual-axis plot showing:
+\begin{itemize}
+    \item \textbf{Win Rate (\%):} The percentage of games won against the rule-based opponent.
+    \item \textbf{Average Reward:} The mean reward per game, providing a more granular measure of performance than binary win/loss.
+\end{itemize}
+The plots automatically annotate the baseline performance of the Scratch and Teacher models and mark the maximum values achieved during the RL phase.
+
+\subsection{Codebase Refactoring}
+To support these advanced features, the codebase underwent significant refactoring:
+\begin{itemize}
+    \item \textbf{Configuration:} All game constants (dimensions, speeds, rewards) were centralized in \texttt{config.py} to ensure consistency across simulation, training, and visualization.
+    \item \textbf{Robustness:} The environment includes checks (e.g., \texttt{is\_catchable}) to ensure fair initialization, preventing the agent from being penalized for physically impossible scenarios.
+    \item \textbf{Visualization:} The \texttt{visual\_game.py} script was updated to load the best model by default and supports command-line arguments for flexibility.
+\end{itemize}
+
+\end{document}
