@@ -203,11 +203,16 @@ cython_debug/
 
 # Project-specific files
 live_plotter.py
+time_monitor.py
 *.csv
 *.png
 *.pth
 *.cls
-*.pdf
+*.aux
+*.log
+*.synctex(busy)
+*.toc
+*.out
 
 # Marimo
 marimo/_static/

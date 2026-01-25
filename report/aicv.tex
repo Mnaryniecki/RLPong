@@ -12,7 +12,7 @@
 \date{\today}
 
 % --- Logo Path ---
-\logopath{logo PWr kolor pion ang.png} % The class looks inside the 'logotype/' folder
+\logopath{logo PWr kolor poziom ang.png} % The class looks inside the 'logotype/' folder
 
 \begin{document}
 
@@ -21,7 +21,7 @@
 \newpage
 
 	\section{Project name}
-	RLPong [Name WIP]
+	RLPong [Name WIP] \href{https://github.com/Mnaryniecki/RLPong}{GitHub Repo}
 
 	\section{Scope and short description of project}
 	I am going to apply reinforcement learning to the game Pong where the Player (in this case neural network AI) is put up against a typical algorithm that tracks the ball without anything else.
@@ -243,52 +243,117 @@ The main next steps towards the final project are:
 
 These steps will complete the transition from a working Pong environment and supervised policy to a fully trained reinforcement learning agent, and will provide the material for the final report.
 
-\section{Final report: Reinforcement Learning Implementation}
 
-Following the midterm milestones, the focus shifted to implementing the Reinforcement Learning (RL) loop, automating the experimental workflow, and establishing a robust evaluation pipeline.
+% =================================================================
+% PART 3: FINAL REPORT
+% =================================================================
+\section{Final Report: Reinforcement Learning Implementation}
 
-\subsection{Algorithm and Training Loop}
-The REINFORCE algorithm (Monte Carlo Policy Gradient) was selected for training. The implementation in \texttt{train\_rl.py} utilizes:
-\begin{itemize}
-    \item \textbf{Parallel Environments:} To stabilize gradients and speed up data collection, 256 independent \texttt{PongEnv} instances run in parallel.
-    \item \textbf{Hyperparameters:}
+    Following the midterm milestones, the focus shifted to implementing the Reinforcement Learning (RL) loop, automating the experimental workflow, and establishing a robust evaluation pipeline.
+
+    \subsection{Algorithm and Training Loop}
+    The REINFORCE algorithm (Monte Carlo Policy Gradient) was selected for training. The implementation in \texttt{train\_rl.py} utilizes:
     \begin{itemize}
-        \item Learning Rate: $1 \times 10^{-4}$ (Adam optimizer).
-        \item Discount Factor ($\gamma$): 0.99.
-        \item Entropy Coefficient: 0.01 (to encourage exploration).
+        \item \textbf{Parallel Environments:} To stabilize gradients and speed up data collection, 256 independent \texttt{PongEnv} instances run in parallel. This is crucial for collecting diverse trajectories efficiently.
+        \item \textbf{Hyperparameters:}
+        \begin{itemize}
+            \item Learning Rate: $1 \times 10^{-4}$ (Adam optimizer).
+            \item Discount Factor ($\gamma$): 0.99.
+            \item Entropy Coefficient: 0.01 (to encourage exploration).
+        \end{itemize}
+        \item \textbf{Batch Updates:} Gradients are computed and applied after collecting trajectories from all parallel environments.
+        \item \textbf{Return Normalization:} Discounted returns are normalized across the batch to reduce variance and improve training stability.
     \end{itemize}
-    \item \textbf{Batch Updates:} Gradients are computed and applied after collecting trajectories from all parallel environments.
+
+    To ensure the agent learns a robust policy, the training process includes a ``waterfall'' loading mechanism: it attempts to resume from a previous RL checkpoint, falls back to the supervised ``teacher'' model, and finally defaults to random initialization if no weights are found.
+
+    \subsection{Experiment Orchestration}
+    A dedicated script, \texttt{run\_experiment.py}, was developed to automate the full experimental lifecycle. It performs the following steps sequentially:
+    \begin{enumerate}
+        \item \textbf{Cleanup:} Removes artifacts from previous runs (unless resuming) to ensure a clean state.
+        \item \textbf{Baseline Evaluation:} Evaluates a random agent (``Scratch'') and the supervised agent (``Teacher'') to establish performance benchmarks before RL begins.
+        \item \textbf{Incremental Training:} Runs the training loop in blocks of 16 updates (approx 4096 games per block), pausing to evaluate the current model against the rule-based opponent.
+        \item \textbf{Logging:} Results (Win Rate, Average Reward) are logged to CSV files (\texttt{results\_scratch\_stochastic.csv} and \texttt{results\_teacher\_stochastic.csv}) after every evaluation step.
+    \end{enumerate}
+
+    \subsection{Model Selection and Evaluation}
+    Evaluation is performed using \texttt{eval.py}, which tests the agent in 128 parallel environments for a fixed number of episodes (16 per evaluation step).
+    
+    Crucially, the training loop tracks the \textbf{Average Reward} to identify the best-performing model. The weights corresponding to the highest average reward are saved separately as \texttt{[prefix]\_best.pth}. This ensures that the final deployed agent represents the peak of training performance rather than the latest (potentially unstable) iteration.
+
+    \subsection{Results Visualization}
+    A plotting utility, \texttt{plot\_results.py}, was implemented to visualize the training progress. It reads the generated CSV logs and produces a dual-axis plot showing:
+    \begin{itemize}
+        \item \textbf{Win Rate (\%):} The percentage of games won against the rule-based opponent.
+        \item \textbf{Average Reward:} The mean reward per game, providing a more granular measure of performance than binary win/loss.
+    \end{itemize}
+
+    \subsection{Codebase Refactoring}
+    To support these advanced features, the codebase underwent significant refactoring:
+    \begin{itemize}
+        \item \textbf{Configuration:} All game constants (dimensions, speeds, rewards) were centralized in \texttt{config.py} to ensure consistency across simulation, training, and visualization.
+        \item \textbf{Robustness:} The environment includes checks (e.g., \texttt{is\_catchable}) to ensure fair initialization, preventing the agent from being penalized for physically impossible scenarios.
+        \item \textbf{Visualization:} The \texttt{visual\_game.py} script was updated to load the best model by default and supports command-line arguments for flexibility.
+    \end{itemize}
+
+
+    \subsection{Updated Experimental Methodology}
+
+    \subsubsection{Stochastic Evaluation}
+     To provide a more rigorous assessment of the agent's capabilities, the evaluation protocol in \texttt{eval.py} was updated to use a \textbf{stochastic policy} ($\texttt{stochastic=True}$). Unlike greedy evaluation, which deterministically selects the action with the highest probability, stochastic evaluation samples from the action distribution output by the policy network. This approach ensures that the reported Win Rate and Average Reward metrics reflect the agent's general robustness and ability to handle variability, rather than its ability to exploit deterministic trajectories against the fixed rule-based opponent.
+
+    \subsubsection{Automated Comparison: Scratch vs. Teacher}
+     The experiment orchestration script, \texttt{run\_experiment.py}, was refactored to conduct a direct comparative analysis. It now automates the execution of two sequential training regimes:
+    \begin{enumerate}
+         \item \textbf{Scratch Stochastic:} Training an agent initialized with random weights to establish a baseline learning curve.
+         \item \textbf{Teacher Stochastic:} Fine-tuning an agent pre-trained on the rule-based opponent's behavior to evaluate the benefits of transfer learning.
+    \end{enumerate}
+     Results from these experiments are logged to separate CSV files, enabling side-by-side visualization of convergence speed and final performance.
+
+    \subsubsection{Robustness and Recovery}
+     To support long-running experimental campaigns, a resume mechanism was implemented in the training loop. The system checks for existing result logs and model checkpoints before starting. If an experiment is interrupted (e.g., due to a system restart), it automatically resumes training from the last recorded update step, preserving previously collected data and computational resources.
+
+    \subsection{Results and Discussion}
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1.0\textwidth]{comparison_plot_stochastic.png}
+        \caption{Comparison of learning curves between Scratch (Blue) and Pre-trained Teacher (Orange) using Stochastic Evaluation. The Teacher model starts with a higher win rate and converges significantly faster to a stable 99\% win rate.}
+        \label{fig:results_stochastic}
+    \end{figure}
+
+    As shown in Figure \ref{fig:results_stochastic}, the agent initialized with "Teacher" weights demonstrated significantly faster convergence compared to the "Scratch" agent. The pre-trained model began with a non-zero win rate and quickly optimized its policy to exploit the opponent's weaknesses. In contrast, the scratch model required approximately 200 updates (roughly 50,000 games) to simply reach positive average rewards, indicating the difficulty of discovering the ball-tracking strategy from random actions.
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1.0\textwidth]{comparison_plot_stochastic_vs_greedy.png}
+        \caption{Performance gap between Greedy (Orange and Blue) and Stochastic (Purple and Green) evaluation policies. The stochastic metrics provide a more conservative and realistic estimate of the agent's true capability.}
+        \label{fig:results_greedy_vs_stochastic}
+    \end{figure}
+
+    Figure \ref{fig:results_greedy_vs_stochastic} highlights a critical observation regarding the agent's stability. Surprisingly, the model performed better overall in \textbf{stochastic mode} compared to \textbf{greedy mode}. The greedy policy (taking the argmax of logits) proved to be more volatile: if the agent made a single suboptimal decision, the deterministic nature of the policy could cause it to get stuck in a failure loop or commit to a rigid trajectory that missed the ball.
+
+    In contrast, stochastic evaluation allowed the model to sample actions based on probability, effectively "smoothing out" jittery decision-making. This randomness served as a recovery mechanism, preventing the agent from becoming locked into a bad decision and allowing it to adjust its trajectory dynamically. Consequently, stochastic evaluation provided a more stable and higher-performing metric, confirming that a slight degree of entropy is beneficial for robustness in continuous-time tracking tasks.
+
+\newpage
+\section{Summary}
+
+This project successfully developed and evaluated a reinforcement learning agent for the classic game of Pong. The primary objective was to train a neural network to master the game using a state-based approach, bypassing the complexity of raw pixel inputs. The agent's "brain" is a multi-layer perceptron that processes an 8-dimensional state vector---containing the normalized positions and velocities of the ball and both paddles---to decide between moving up, down, or staying still.
+
+The core of the training process utilized the \textbf{REINFORCE} (Monte Carlo Policy Gradient) algorithm. To ensure stable and efficient learning, the implementation was enhanced with several key techniques:
+\begin{itemize}
+    \item \textbf{Parallel Environments:} Training data was collected from 256 simultaneous game instances, providing a diverse batch of experiences for each policy update.
+    \item \textbf{Return Normalization:} The cumulative rewards were normalized within each batch, a crucial step that acts as a baseline to reduce gradient variance.
+    \item \textbf{Entropy Regularization:} A small entropy bonus was added to the loss function to encourage exploration and prevent the agent from prematurely converging to a suboptimal deterministic policy.
 \end{itemize}
 
-To ensure the agent learns a robust policy, the training process includes a ``waterfall'' loading mechanism: it attempts to resume from a previous RL checkpoint, falls back to the supervised ``teacher'' model, and finally defaults to random initialization if no weights are found.
-
-\subsection{Experiment Orchestration}
-A dedicated script, \texttt{run\_experiment.py}, was developed to automate the full experimental lifecycle. It performs the following steps sequentially:
+A significant aspect of this project was the rigorous, automated experimental framework designed to compare two fundamental training strategies:
 \begin{enumerate}
-    \item \textbf{Cleanup:} Removes artifacts from previous runs to ensure a clean state.
-    \item \textbf{Baseline Evaluation:} Evaluates a random agent (``Scratch'') and the supervised agent (``Teacher'') to establish performance benchmarks before RL begins.
-    \item \textbf{Incremental Training:} Runs the training loop in blocks (e.g., 16 updates), pausing to evaluate the current model against the rule-based opponent.
-    \item \textbf{Logging:} Results (Win Rate, Average Reward) are logged to \texttt{experiment\_results.csv} after every evaluation step.
+    \item \textbf{Training from Scratch:} A baseline approach where the agent learns with no prior knowledge.
+    \item \textbf{Training from a Teacher:} A transfer learning approach where the agent is first pre-trained via supervised learning to imitate a simple, rule-based opponent. It is then fine-tuned using reinforcement learning.
 \end{enumerate}
 
-\subsection{Model Selection and Evaluation}
-Evaluation is performed using \texttt{eval.py}, which tests the agent in 128 parallel environments for a fixed number of episodes.
-Crucially, the training loop tracks the \textbf{Average Reward} (not just win rate) to identify the best-performing model. The weights corresponding to the highest average reward are saved separately as \texttt{pong\_best.pth}. This ensures that the final deployed agent represents the peak of training performance rather than the latest (potentially unstable) iteration.
+The entire pipeline, from environment simulation and agent training to vectorized evaluation and results visualization, was automated. The system was designed not only to produce a capable Pong-playing agent but also to serve as a robust platform for conducting comparative machine learning experiments. The final evaluation, based on stochastic action selection, ensures that the reported metrics reflect the agent's general capability rather than its performance on deterministic trajectories.
 
-\subsection{Results Visualization}
-A plotting utility, \texttt{plot\_results.py}, was implemented to visualize the training progress. It reads the generated CSV logs and produces a dual-axis plot showing:
-\begin{itemize}
-    \item \textbf{Win Rate (\%):} The percentage of games won against the rule-based opponent.
-    \item \textbf{Average Reward:} The mean reward per game, providing a more granular measure of performance than binary win/loss.
-\end{itemize}
-The plots automatically annotate the baseline performance of the Scratch and Teacher models and mark the maximum values achieved during the RL phase.
-
-\subsection{Codebase Refactoring}
-To support these advanced features, the codebase underwent significant refactoring:
-\begin{itemize}
-    \item \textbf{Configuration:} All game constants (dimensions, speeds, rewards) were centralized in \texttt{config.py} to ensure consistency across simulation, training, and visualization.
-    \item \textbf{Robustness:} The environment includes checks (e.g., \texttt{is\_catchable}) to ensure fair initialization, preventing the agent from being penalized for physically impossible scenarios.
-    \item \textbf{Visualization:} The \texttt{visual\_game.py} script was updated to load the best model by default and supports command-line arguments for flexibility.
-\end{itemize}
 
 \end{document}

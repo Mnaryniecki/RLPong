@@ -1,6 +1,5 @@
 import torch
 import torch.optim as optim
-import torch.nn.functional as F
 from torch.distributions import Categorical
 import os
 from collections import deque

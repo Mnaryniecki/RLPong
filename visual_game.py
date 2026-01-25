@@ -61,7 +61,7 @@ def run_visual(weights_path):
             total_games += 1
             if info["winner"] == "right":
                 right_wins += 1
-            
+
             print(f"Game {total_games} | Winner: {info['winner']} | Win Rate: {right_wins/total_games*100:.1f}%")
             state = env.reset()
     pygame.quit()
